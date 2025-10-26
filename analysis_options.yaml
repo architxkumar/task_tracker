@@ -1,0 +1,14 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    always_declare_return_types: true
+    always_use_package_imports: true
+    avoid_relative_lib_imports: true
+    directives_ordering: true
+    prefer_const_constructors: true
+    require_trailing_commas: true
+
+formatter:
+  trailing_commas: preserve
+
