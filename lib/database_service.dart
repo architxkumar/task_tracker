@@ -44,7 +44,7 @@ class DatabaseService {
               ),
             );
 
-  // Returns the `id` of the task after deletion
+  /// Returns the `id` of the task after deletion
   Future<int> deleteTask(Task task) async => (task.id == null)
       ? 0
       : await (_database.delete(_database.todoItems)..where(
