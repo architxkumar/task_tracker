@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:result_dart/result_dart.dart';
 import 'package:task_tracker/database.dart';
 import 'package:task_tracker/model.dart';
 import 'package:task_tracker/task.dart';
@@ -13,14 +14,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TaskRepository _taskRepository = TaskRepository(AppDatabase());
   late final _taskList = _taskRepository.getTasksList();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _taskTitleController = TextEditingController();
-
-  @override
-  void dispose() {
-    super.dispose();
-    _taskTitleController.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,138 +22,9 @@ class _HomeScreenState extends State<HomeScreen> {
         onPressed: () {
           showDialog(
             context: context,
-            builder: (context) {
-              bool isCompleted = false;
-              bool isSubmitButtonEnabled = false;
-              bool isLoading = false;
-              return Dialog(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Form(
-                    key: _formKey,
-                    child: StatefulBuilder(
-                      builder: (context, setState) => Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Spacer(),
-                              IconButton(
-                                tooltip: 'Close',
-                                onPressed: () => Navigator.pop(context),
-                                icon: const Icon(
-                                  Icons.close,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 16,
-                          ),
-                          TextFormField(
-                            controller: _taskTitleController,
-                            decoration: InputDecoration(
-                              isDense: true,
-                              hintStyle: TextTheme.of(context).titleLarge,
-                              hintText: 'Add Title',
-                              border: null,
-                              contentPadding: null,
-                            ),
-                            onChanged: (value) {
-                              setState(() {
-                                isSubmitButtonEnabled = value.trim().isNotEmpty;
-                              });
-                            },
-                          ),
-                          const SizedBox(
-                            height: 16,
-                          ),
-                          Row(
-                            children: [
-                              const Text(
-                                'Completed',
-                              ),
-                              const Spacer(),
-                              Switch(
-                                value: isCompleted,
-                                onChanged: (bool value) {
-                                  setState(() {
-                                    isCompleted = value;
-                                  });
-                                },
-                              ),
-                            ],
-                          ),
-                          const SizedBox(
-                            height: 32,
-                          ),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              const Spacer(),
-                              FilledButton(
-                                onPressed: (isSubmitButtonEnabled)
-                                    ? () async {
-                                        setState(() {
-                                          isSubmitButtonEnabled = false;
-                                          isLoading = true;
-                                        });
-                                        try {
-                                          final Task task = Task(
-                                            content: _taskTitleController.text
-                                                .trim(),
-                                            completed: isCompleted,
-                                          );
-                                          final result = await _taskRepository
-                                              .insertTask(
-                                                task,
-                                              );
-                                          if (result.isError()) {
-                                            if (context.mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text(
-                                                    'Error adding task',
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          }
-                                        } finally {
-                                          if (context.mounted) {
-                                            setState(() {
-                                              isSubmitButtonEnabled = true;
-                                              isLoading = false;
-                                            });
-
-                                            Navigator.pop(context);
-                                          }
-                                        }
-                                      }
-                                    : null,
-                                child: (isLoading)
-                                    ? const SizedBox(
-                                        width: 16,
-                                        height: 16,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : const Text('Add Task'),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
+            builder: (context) => TaskCreationDialog(
+              onTaskCreated: _taskRepository.insertTask,
+            ),
           );
         },
         child: const Icon(Icons.add),
@@ -188,6 +52,151 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
         },
+      ),
+    );
+  }
+}
+
+class TaskCreationDialog extends StatefulWidget {
+  final Future<Result<bool>> Function(Task) onTaskCreated;
+  const TaskCreationDialog({super.key, required this.onTaskCreated});
+
+  @override
+  State<TaskCreationDialog> createState() => _TaskCreationDialogState();
+}
+
+class _TaskCreationDialogState extends State<TaskCreationDialog> {
+  bool isCompleted = false;
+  bool isSubmitButtonEnabled = false;
+  bool isLoading = false;
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _taskTitleController = TextEditingController();
+
+  void _showConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Discard changes?'),
+        content: const Text('Are you sure you want to discard your changes?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close confirmation dialog
+              Navigator.pop(context); // Close task creation dialog
+            },
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      constraints: const BoxConstraints(maxWidth: 560),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Spacer(),
+                  IconButton(
+                    tooltip: 'Close',
+                    onPressed: () => _showConfirmationDialog(),
+                    icon: const Icon(Icons.close),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _taskTitleController,
+                decoration: const InputDecoration(
+                  isDense: true,
+                  hintText: 'Add Title',
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onChanged: (value) {
+                  setState(() {
+                    isSubmitButtonEnabled = value.trim().isNotEmpty;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Text('Completed'),
+                  const Spacer(),
+                  Switch(
+                    value: isCompleted,
+                    onChanged: (bool value) {
+                      setState(() {
+                        isCompleted = value;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 32),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const Spacer(),
+                  FilledButton(
+                    onPressed: (isSubmitButtonEnabled)
+                        ? () async {
+                            setState(() {
+                              isSubmitButtonEnabled = false;
+                              isLoading = true;
+                            });
+                            try {
+                              final Task task = Task(
+                                content: _taskTitleController.text.trim(),
+                                completed: isCompleted,
+                              );
+                              final result = await widget.onTaskCreated(task);
+                              if (result.isError() && context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Error adding task'),
+                                  ),
+                                );
+                              }
+                            } finally {
+                              if (context.mounted) {
+                                _taskTitleController.clear();
+                                setState(() {
+                                  isSubmitButtonEnabled = true;
+                                  isLoading = false;
+                                });
+                                Navigator.pop(context);
+                              }
+                            }
+                          }
+                        : null,
+                    child: (isLoading)
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Text('Add Task'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
