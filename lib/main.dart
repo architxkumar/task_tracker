@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:task_tracker/ui/home.dart';
 
-void main() => runApp(TaskTrackerApp());
+void main() => runApp(const TaskTrackerApp());
 
 class TaskTrackerApp extends StatelessWidget {
   const TaskTrackerApp({super.key});
@@ -9,8 +9,10 @@ class TaskTrackerApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      darkTheme: ThemeData.dark(),
+      themeMode: ThemeMode.system,
       title: 'Task Trackr',
-      home: HomeScreen(),
+      home: const HomeScreen(),
     );
   }
 }
